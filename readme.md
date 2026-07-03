@@ -10,6 +10,40 @@ Focus on quality over completeness. Submit what you have when time is up.
 
 ---
 
+## Submission Notes — Fenix Return
+
+All four tasks are implemented on the current starter. The project setup (dependencies, build config, Tailwind, `package.json`) is left untouched — only the files each task targets are changed, plus the new candles route.
+
+### How to run
+
+```bash
+npm install
+npm run chain            # terminal 1 — local Hardhat node
+npm run deploy           # terminal 2 — deploys ZyncToken
+npm run dev              # → http://localhost:3000
+npm run test:contracts   # Task 4 tests
+```
+
+### What was done
+
+- **Task 1 — Place Order fix.** Root cause: `TradeEntryPanel` only wrote paper trades to `localStorage` and never called `POST /api/v1/orders` (no `fetch` existed in the client). It now POSTs `{market_id, side, order_type, size, price?}` — `price` only for `limit` — matching what `/api/v1/orders` and the matching engine expect. Works for both `limit` and `market`.
+- **Task 2 — Candles endpoint.** `GET /api/v1/markets/:id/candles?timeframe=&limit=`; timeframes `1m/5m/15m/1h` via re-bucketing; `400` for an invalid timeframe/limit, `404` for an unknown market.
+- **Task 3 — Portfolio panel.** On `/markets`, lists open paper positions with pair, side, entry, live mark price and unrealised PnL, updating in real time from the existing `/ws/markets` feed, styled with the existing Tailwind cards.
+- **Task 4 — Burnable ZYNC.** `burn`, `burnFrom` (via `_spendAllowance`) and a `Burned(address indexed from, uint256 amount)` event, with tests for a successful burn, burn over balance, and burnFrom with and without allowance.
+
+### What I would improve or finish given more time
+
+- Store sub-5m candles and retain more history in the engine, so `1m` is genuine data and larger `limit` values on coarse timeframes have more to return.
+- An optimistic order row in the book before the API round-trip; column sort and an empty-state on the Portfolio panel.
+- Foundry fuzz tests for the `burn` / `burnFrom` allowance edge cases.
+
+### Tradeoffs / decisions worth noting
+
+- **Kept the project setup untouched** — implemented only the four task requirements, with no new dependencies and no scaffold/config changes.
+- **Candles source:** candles come from the same simulated engine as the existing market-detail route (Binance-fed when available, simulated otherwise). `limit` is treated as an upper bound — a request returns the buckets that actually exist for that timeframe rather than fabricating data, so a coarse timeframe (e.g. `1h`) returns fewer candles than a fine one.
+
+---
+
 ## Time Consideration
 
 This assessment is scoped for **4–6 hours**. If you hit your limit, submit what you have and use your README to describe what you would finish next.

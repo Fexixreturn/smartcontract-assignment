@@ -20,13 +20,36 @@ export function TradeEntryPanel({ marketId, pair, base, quote, markPrice, connec
   const estLiq = side === "buy" ? markPrice * (1 - 0.85 / Math.max(leverage, 1)) : markPrice * (1 + 0.85 / Math.max(leverage, 1));
   const fee = estNotional * 0.0004;
 
-  function onSubmit() {
+  async function onSubmit() {
     setToast(null);
     if (!connected) { onRequestConnect?.(); setToast("Connect a wallet to continue."); return; }
     if (!(sz > 0)) { setToast("Enter a valid size."); return; }
+    let lp = 0;
     if (orderType === "limit") {
-      const lp = parseFloat(limitPx);
+      lp = parseFloat(limitPx);
       if (!(lp > 0)) { setToast("Enter limit price."); return; }
+    }
+
+    // Submit to the matching engine. Market orders carry no price.
+    try {
+      const res = await fetch("/api/v1/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          market_id: marketId,
+          side,
+          order_type: orderType,
+          size: String(sz),
+          ...(orderType === "limit" ? { price: String(lp) } : {}),
+        }),
+      });
+      if (!res.ok) { setToast(`Order rejected: ${await res.text()}`); return; }
+    } catch {
+      setToast("Order failed: could not reach server.");
+      return;
+    }
+
+    if (orderType === "limit") {
       placeLimit({ marketId, pair, side, sizeBase: sz, limitPrice: lp });
       setToast(`Limit ${side} submitted @ ${lp}`);
       return;

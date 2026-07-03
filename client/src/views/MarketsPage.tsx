@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMarketsStream } from "../context/MarketsStreamContext";
 import { useFavorites } from "../context/FavoritesContext";
+import { usePaperTrade } from "../context/PaperTradeContext";
 import { SparklineSvg } from "../components/dex/SparklineSvg";
 import { TOKEN_ICONS } from "../components/dex/tokenIcons";
 
@@ -40,6 +41,7 @@ export function MarketsPage() {
   const [tab, setTab] = useState<"all" | "fav">("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "vol", dir: "desc" });
   const { favs, toggleFav } = useFavorites();
+  const { positions } = usePaperTrade();
 
   function cycleSort(key: SortKey) {
     setSort(prev => prev.key === key
@@ -130,6 +132,56 @@ export function MarketsPage() {
             ))}
           </div>
         )}
+
+        {/* Portfolio */}
+        <section aria-label="Portfolio" className="mb-6 rounded-2xl p-4"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <h2 className="m-0 mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.45)" }}>
+            Portfolio · Paper positions
+          </h2>
+          {positions.length === 0 ? (
+            <p className="m-0 text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>No open paper positions.</p>
+          ) : (
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  {["Pair", "Side", "Size", "Entry", "Mark", "PnL"].map(h => (
+                    <th key={h} className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider border-b"
+                      style={{ borderColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.45)" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {positions.map(p => {
+                  const mark = overview?.markets.find(m => m.id === p.marketId)?.mark_price;
+                  const pnl = mark == null ? null
+                    : p.side === "long" ? (mark - p.entryPrice) * p.sizeBase : (p.entryPrice - mark) * p.sizeBase;
+                  return (
+                    <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <td className="px-3 py-2 text-sm font-semibold text-white">{p.pair}</td>
+                      <td className="px-3 py-2 text-sm font-semibold" style={{ color: p.side === "long" ? "#3dffa0" : "#ef5350" }}>
+                        {p.side}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-sm tabular-nums" style={{ color: "rgba(255,255,255,0.65)" }}>
+                        {p.sizeBase.toFixed(4)}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-sm tabular-nums" style={{ color: "rgba(255,255,255,0.65)" }}>
+                        {fmtPrice(p.entryPrice)}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-sm tabular-nums text-white">
+                        {mark == null ? "—" : fmtPrice(mark)}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-sm tabular-nums font-semibold"
+                        style={{ color: pnl == null ? "rgba(255,255,255,0.35)" : pnl >= 0 ? "#3dffa0" : "#ef5350" }}>
+                        {pnl == null ? "—" : `${pnl >= 0 ? "+" : ""}${pnl.toFixed(4)}`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </section>
 
         {/* Controls */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

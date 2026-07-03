@@ -17,6 +17,9 @@ contract ZyncToken is ERC20, Ownable, ReentrancyGuard {
     error CapExceeded();
     error ZeroAmount();
 
+    /// @notice Emitted when tokens are burned via `burn` or `burnFrom`.
+    event Burned(address indexed from, uint256 amount);
+
     constructor(uint256 initialMintPriceWei) ERC20("Zync", "ZYNC") Ownable(msg.sender) {
         mintPriceWei = initialMintPriceWei;
     }
@@ -48,6 +51,19 @@ contract ZyncToken is ERC20, Ownable, ReentrancyGuard {
             (bool ok, ) = payable(msg.sender).call{value: refund}("");
             require(ok, "refund failed");
         }
+    }
+
+    /// @notice Burn `amount` of the caller's own tokens.
+    function burn(uint256 amount) external {
+        _burn(msg.sender, amount);
+        emit Burned(msg.sender, amount);
+    }
+
+    /// @notice Burn `amount` from `account`, spending the caller's allowance.
+    function burnFrom(address account, uint256 amount) external {
+        _spendAllowance(account, msg.sender, amount);
+        _burn(account, amount);
+        emit Burned(account, amount);
     }
 
     function withdraw() external onlyOwner nonReentrant {
